@@ -1,0 +1,13 @@
+USAGE:
+
+Simply copy the script and the tarball of its support files to a folder full of images, and execute python autogallery.py from that directory. A webpage will automatically be generated and ready to send out to friends. : )
+
+ROADMAP/OVERVIEW:
+
+There's a lot left to be done here; this was a novelty script written about a year ago (July 2008) as an experiment with Python. The code has been revised a few times since then, but surely needs much more help and revision.
+
+AutoGallery was designed with extensibility and customizability in mind. We're using a templating setup and the tarballed support files for easy distribution of customized things; you don't have to use the (plain, gaunt) default index page if you don't want to. The hooks to add to your layout will eventually be documented here.
+
+LICENSE:
+
+We are fully intent on releasing this under an OSS license, but for now, consider it All Rights Reserved, because it's 1 AM and I have work tomorrow and I don't have time to get the licensing sorted out. This will be taken care of soon, but we hope this won't prevent too much usage in the meantime.
