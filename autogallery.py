@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 import os, sys, getopt #for path navigation and argument handling
 import Image #for thumbnailing, Python Image Library
@@ -23,9 +24,9 @@ for opt, arg in opts:
 		rex = 1
 		regen = 1
 
-if os.path.isfile('template.html') == 0 or rex == 1:
+if os.path.isfile('supportfiles/template.html') == 0 or rex == 1:
 	print "extracting supporting files ..."
-	support = tarfile.open('autogallerystuff.tar.bz2', 'r:bz2')
+	support = tarfile.open('supportfiles.tar.bz2', 'r:bz2')
 	support.extractall()
 	support.close()
 	del support
@@ -39,7 +40,7 @@ dircontents = os.listdir(pwd)
 images = []
 
 config = ConfigParser.ConfigParser()
-config.readfp(open('config.cfg'))
+config.readfp(open('supportfiles/config.cfg'))
 
 filetypes = config.get('autogallery', 'filetypes')
 filetypes = [element.strip() for element in filetypes.split(',')]
@@ -108,7 +109,7 @@ fxtags = config.get('autogallery', 'fxtags')
 
 print "opening and writing files ..."
 
-template = open('template.html', 'r') #open template file
+template = open('supportfiles/template.html', 'r') #open template file
 index = open('index.html', 'w') #open index file
 
 templatecontents = template.read()
