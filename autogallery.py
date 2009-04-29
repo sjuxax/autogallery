@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# autogallery.py -- a simple script for automatically generating photo galleries
+# author: Jeff Cook <jeff@deserettechnology.com>
+# offered under the MIT license
+
 import os, sys, getopt #for path navigation and argument handling
 import Image #for thumbnailing, Python Image Library
 import zipfile, tarfile #for archive reading/writing
