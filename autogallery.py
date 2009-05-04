@@ -12,7 +12,7 @@ import ConfigParser #for parsing config file
 
 try:
 	opts, args = getopt.getopt(sys.argv[1:], "", ["rex", "regen", "regenall"])
-except getopt.GetoptError as e:
+except getopt.GetoptError, e:
 	print "Argument error:	", e
 	print " Use --rex to re-extract support files."
 	sys.exit(2)
