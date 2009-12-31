@@ -33,7 +33,6 @@ if os.path.isfile('supportfiles/template.html') == 0 or rex == 1:
 	support = tarfile.open('supportfiles.tar.bz2', 'r:bz2')
 	support.extractall()
 	support.close()
-	del support
 else:
 	print "seems files have been extracted already, use --rex to unpack anyway and overwrite"
 
@@ -66,7 +65,6 @@ if os.path.isfile('images.zip') == 0 or regen == 1:
 	for image in images:
 		zippy.write(image.encode('CP437'))
 	zippy.close()
-	del zippy
 	print "zip created"
 else:
 	print "zip exists, not recreating"
