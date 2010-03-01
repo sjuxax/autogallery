@@ -97,7 +97,6 @@ for image in images:
 
 dirnamelist = pwd.split('/')
 dirname = dirnamelist[-1]
-del dirnamelist
 
 imagelinks = ''
 nofxlinks = ''
@@ -130,8 +129,9 @@ if buildnofx == "1":
 	nofxcontents = templatecontents.replace('{FXTAGS}', fxtags)
 	nofxcontents = nofxcontents.replace('{IMAGECODE}', nofxlinks)
 	nofx.write(nofxcontents)
-	del nofxcontents
+	nofx.close()
 
 templatecontents = templatecontents.replace('{FXTAGS}', fxtags)
 templatecontents = templatecontents.replace('{IMAGECODE}', imagelinks)
 index.write(templatecontents)
+index.close()
