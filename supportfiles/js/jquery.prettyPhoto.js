@@ -1,464 +1,58 @@
 /* ------------------------------------------------------------------------
-	Class: prettyPhoto
-	Use: Lightbox clone for jQuery
-	Author: Stephane Caron (http://www.no-margin-for-errors.com)
-	Version: 2.2.7
-------------------------------------------------------------------------- */
+ * 	Class: prettyPhoto
+ * 	Use: Lightbox clone for jQuery
+ * 	Author: Stephane Caron (http://www.no-margin-for-errors.com)
+ * 	Version: 2.5.6
+ ------------------------------------------------------------------------- */
 
-var $pp_pic_holder;
-var $ppt;
-
-(function($) {
-	$.fn.prettyPhoto = function(settings) {
-		// global Variables
-		var doresize = true;
-		var imagesArray = [];
-		var setPosition = 0; /* Position in the set */
-	
-		// Global elements
-		var $caller;
-		
-		var $scrollPos = _getScroll();
-	
-		$(window).scroll(function(){ _centerPicture(); $scrollPos = _getScroll(); });
-		$(window).resize(function(){ _centerPicture(); _resizeOverlay(); });
-		$(document).keyup(function(e){
-			switch(e.keyCode){
-				case 37:
-					if (setPosition == 1) return;
-					changePicture('previous');
-					break;
-				case 39:
-					if (setPosition == setCount) return;
-					changePicture('next');
-					break;
-				case 27:
-					close();
-					break;
-			};
-	    });
- 
-	
-		settings = jQuery.extend({
-			animationSpeed: 'normal', /* fast/slow/normal */
-			padding: 40, /* padding for each side of the picture */
-			opacity: 0.35, /* Value between 0 and 1 */
-			showTitle: true, /* true/false */
-			allowresize: true, /* true/false */
-			counter_separator_label: '/', /* The separator for the gallery counter 1 "of" 2 */
-			theme: 'light_rounded' /* light_rounded / dark_rounded / light_square / dark_square */
-		}, settings);
-	
-		$(this).each(function(){
-			var hasTitle = false;
-			var isSet = false;
-			var setCount = 0; /* Total images in the set */
-			var arrayPosition = 0; /* Total position in the array */
-			
-			imagesArray[imagesArray.length] = this;
-			$(this).bind('click',function(){
-				open(this);
-				return false;
-			});
-		});
-	
-		function open(el) {
-			$caller = $(el);
-		
-			// Find out if the picture is part of a set
-			theRel = $caller.attr('rel');
-			galleryRegExp = /\[(?:.*)\]/;
-			theGallery = galleryRegExp.exec(theRel);
-		
-			// Calculate the number of items in the set, and the position of the clicked picture.
-			isSet = false;
-			setCount = 0;
-			for (i = 0; i < imagesArray.length; i++){
-				if($(imagesArray[i]).attr('rel').indexOf(theGallery) != -1){
-					setCount++;
-					if(setCount > 1) isSet = true;
-
-					if($(imagesArray[i]).attr('href') == $caller.attr('href')){
-						setPosition = setCount;
-						arrayPosition = i;
-					};
-				};
-			};
-		
-			_buildOverlay();
-
-			// Display the current position
-			$pp_pic_holder.find('p.currentTextHolder').text(setPosition + settings.counter_separator_label + setCount);
-
-			// Position the picture in the center of the viewing area
-			_centerPicture();
-		
-			$('#pp_full_res').hide();
-			$pp_pic_holder.find('.pp_loaderIcon').show();
-		};
-	
-		showimage = function(width,height,containerWidth,containerHeight,contentHeight,contentWidth,resized){
-			$('.pp_loaderIcon').hide();
-
-			if($.browser.opera) {
-				windowHeight = window.innerHeight;
-				windowWidth = window.innerWidth;
-			}else{
-				windowHeight = $(window).height();
-				windowWidth = $(window).width();
-			};
-
-			$pp_pic_holder.find('.pp_content').animate({'height':contentHeight,'width':containerWidth},settings.animationSpeed);
-
-			projectedTop = $scrollPos['scrollTop'] + ((windowHeight/2) - (containerHeight/2));
-			if(projectedTop < 0) projectedTop = 0 + $('div.ppt').height();
-
-			// Resize the holder
-			$pp_pic_holder.animate({
-				'top': projectedTop,
-				'left': ((windowWidth/2) - (containerWidth/2)),
-				'width': containerWidth
-			},settings.animationSpeed,function(){
-				$pp_pic_holder.width(containerWidth);
-				$pp_pic_holder.find('.pp_hoverContainer,#fullResImage').height(height).width(width);
-
-				// Fade the new image
-				$pp_pic_holder.find('#pp_full_res').fadeIn(settings.animationSpeed);
-
-				// Show the nav elements
-				_shownav($pp_pic_holder,$ppt);
-			
-				// Fade the resizing link if the image is resized
-				if(resized) $('a.pp_expand,a.pp_contract').fadeIn(settings.animationSpeed);
-			});
-		};
-	
-		function changePicture(direction){
-			if(direction == 'previous') {
-				arrayPosition--;
-				setPosition--;
-			}else{
-				arrayPosition++;
-				setPosition++;
-			};
-
-			// Allow the resizing of the images
-			if(!doresize) doresize = true;
-
-			// Fade out the current picture
-			$pp_pic_holder.find('.pp_hoverContainer,.pp_details').fadeOut(settings.animationSpeed);
-			$pp_pic_holder.find('#pp_full_res').fadeOut(settings.animationSpeed,function(){
-				$('.pp_loaderIcon').show();
-			
-				// Preload the image
-				_preload();
-			});
-
-			_hideTitle();
-			$('a.pp_expand,a.pp_contract').fadeOut(settings.animationSpeed,function(){
-				$(this).removeClass('pp_contract').addClass('pp_expand');
-			});
-		};
-	
-		function close(){
-			$('div.pp_pic_holder,div.ppt').fadeOut(settings.animationSpeed, function(){
-				$('div.pp_overlay').fadeOut(settings.animationSpeed, function(){
-					$('div.pp_overlay,div.pp_pic_holder,div.ppt').remove();
-				
-					// To fix the bug with IE select boxes
-					if($.browser.msie && $.browser.version == 6){
-						$('select').css('visibility','visible');
-					};
-				});
-			});
-			
-			doresize = true;
-		};
-	
-		function _checkPosition(){
-			// If at the end, hide the next link
-			if(setPosition == setCount) {
-				$pp_pic_holder.find('a.pp_next').css('visibility','hidden');
-				$pp_pic_holder.find('a.pp_arrow_next').addClass('disabled').unbind('click');
-			}else{ 
-				$pp_pic_holder.find('a.pp_next').css('visibility','visible');
-				$pp_pic_holder.find('a.pp_arrow_next.disabled').removeClass('disabled').bind('click',function(){
-					changePicture('next');
-					return false;
-				});
-			};
-		
-			// If at the beginning, hide the previous link
-			if(setPosition == 1) {
-				$pp_pic_holder.find('a.pp_previous').css('visibility','hidden');
-				$pp_pic_holder.find('a.pp_arrow_previous').addClass('disabled').unbind('click');
-			}else{
-				$pp_pic_holder.find('a.pp_previous').css('visibility','visible');
-				$pp_pic_holder.find('a.pp_arrow_previous.disabled').removeClass('disabled').bind('click',function(){
-					changePicture('previous');
-					return false;
-				});
-			};
-		
-			// Change the current picture text
-			$pp_pic_holder.find('p.currentTextHolder').text(setPosition + settings.counter_separator_label + setCount);
-		
-			$caller = (isSet) ? $(imagesArray[arrayPosition]) : $caller;
-
-			if($caller.attr('title')){
-				$pp_pic_holder.find('.pp_description').show().html(unescape($caller.attr('title')));
-			}else{
-				$pp_pic_holder.find('.pp_description').hide().text('');
-			};
-		
-			if($caller.find('img').attr('alt') && settings.showTitle){
-				hasTitle = true;
-				$ppt.find('.ppt_content').html(unescape($caller.find('img').attr('alt')));
-			}else{
-				hasTitle = false;
-			};
-		};
-	
-		function _fitToViewport(width,height){
-			hasBeenResized = false;
-		
-			$('div.pp_pic_holder .pp_details').width(width); /* To have the correct height */
-			$('div.pp_pic_holder .pp_details p.pp_description').width(width - parseFloat($('div.pp_pic_holder a.pp_close').css('width'))); /* So it doesn't overlap the button */
-		
-			// Get the container size, to resize the holder to the right dimensions
-			contentHeight = height + parseFloat($('div.pp_pic_holder .pp_details').height()) + parseFloat($('div.pp_pic_holder .pp_details').css('margin-top')) + parseFloat($('div.pp_pic_holder .pp_details').css('margin-bottom'));
-			contentWidth = width;
-			containerHeight = height + parseFloat($('div.ppt').height()) + parseFloat($('div.pp_pic_holder .pp_top').height()) + parseFloat($('div.pp_pic_holder .pp_bottom').height());
-			containerWidth = width + settings.padding;
-		
-			// Define them in case there's no resize needed
-			imageWidth = width;
-			imageHeight = height;
-
-			windowHeight = $(window).height();
-			windowWidth = $(window).width();
-		
-			if( ((containerWidth > windowWidth) || (containerHeight > windowHeight)) && doresize && settings.allowresize) {
-				hasBeenResized = true;
-				notFitting = true;
-			
-				while (notFitting){
-					if((containerWidth > windowWidth)){
-						imageWidth = (windowWidth - 200);
-						imageHeight = (height/width) * imageWidth;
-					}else if((containerHeight > windowHeight)){
-						imageHeight = (windowHeight - 200);
-						imageWidth = (width/height) * imageHeight;
-					}else{
-						notFitting = false;
-					};
-
-					containerHeight = imageHeight;
-					containerWidth = imageWidth;
-				};
-			
-				// Define the new dimensions
-				contentHeight = imageHeight + parseFloat($('div.pp_pic_holder .pp_details').height()) + parseFloat($('div.pp_pic_holder .pp_details').css('margin-top')) + parseFloat($('div.pp_pic_holder .pp_details').css('margin-bottom'));
-				contentWidth = imageWidth;
-				containerHeight = imageHeight + parseFloat($('div.ppt').height()) + parseFloat($('div.pp_pic_holder .pp_top').height()) + parseFloat($('div.pp_pic_holder .pp_bottom').height());
-				containerWidth = imageWidth + settings.padding;
-			
-				$('div.pp_pic_holder .pp_details').width(contentWidth); /* To have the correct height */
-				$('div.pp_pic_holder .pp_details p.pp_description').width(contentWidth - parseFloat($('div.pp_pic_holder a.pp_close').css('width'))); /* So it doesn't overlap the button */
-			};
-
-			return {
-				width:imageWidth,
-				height:imageHeight,
-				containerHeight:containerHeight,
-				containerWidth:containerWidth,
-				contentHeight:contentHeight,
-				contentWidth:contentWidth,
-				resized:hasBeenResized
-			};
-		};
-	
-		function _centerPicture(){
-			if ($pp_pic_holder){ if($pp_pic_holder.size() == 0){ return; }}else{ return; }; //Make sure the gallery is open
-
-			if($.browser.opera) {
-				windowHeight = window.innerHeight;
-				windowWidth = window.innerWidth;
-			}else{
-				windowHeight = $(window).height();
-				windowWidth = $(window).width();
-			};
-		
-			if(doresize) {
-				$pHeight = $pp_pic_holder.height();
-				$pWidth = $pp_pic_holder.width();
-				$tHeight = $ppt.height();
-				$offset = $pp_pic_holder.offset();
-				
-				projectedTop = (windowHeight/2) + $scrollPos['scrollTop'] - ($pHeight/2);
-				if(projectedTop < 0) projectedTop = 0 + $tHeight;
-				
-				$pp_pic_holder.css({
-					'top': projectedTop,
-					'left': (windowWidth/2) + $scrollPos['scrollLeft'] - ($pWidth/2)
-				});
-		
-				$ppt.css({
-					'top' : $offset.top - $tHeight,
-					'left' : $offset.left + (settings.padding/2)
-				});
-			};
-		};
-	
-		function _shownav(){
-			if(isSet) $pp_pic_holder.find('.pp_hoverContainer').fadeIn(settings.animationSpeed);
-			$pp_pic_holder.find('.pp_details').fadeIn(settings.animationSpeed);
-			_showTitle($pp_pic_holder,$ppt);
-		};
-	
-		function _showTitle(){
-			if(settings.showTitle && hasTitle){
-				$ppt.css({
-					'top' : $pp_pic_holder.offset().top - 22,
-					'left' : $pp_pic_holder.offset().left + (settings.padding/2),
-					'display' : 'none'
-				});
-			
-				$ppt.find('div.ppt_content').css('width','auto');
-			
-				if($ppt.width() > $pp_pic_holder.width()){
-					$ppt.find('div.ppt_content').css('width',$pp_pic_holder.width() - (settings.padding * 2));
-				}else{
-					$ppt.find('div.ppt_content').css('width','');
-				};
-			
-				$ppt.fadeIn(settings.animationSpeed);
-			};
-		};
-	
-		function _hideTitle() {
-			$ppt.fadeOut(settings.animationSpeed);
-		};
-	
-		function _preload(){
-			// Hide the next/previous links if on first or last images.
-			_checkPosition();
-		
-			// Set the new image
-			imgPreloader = new Image();
-		
-			// Preload the neighbour images
-			nextImage = new Image();
-			if(isSet && setPosition > setCount) nextImage.src = $(imagesArray[arrayPosition + 1]).attr('href');
-			prevImage = new Image();
-			if(isSet && imagesArray[arrayPosition - 1]) prevImage.src = $(imagesArray[arrayPosition - 1]).attr('href');
-
-			$pp_pic_holder.find('.pp_content').css('overflow','hidden');
-			$pp_pic_holder.find('#fullResImage').attr('src',$caller.attr('href'));
-
-			imgPreloader.onload = function(){
-				var correctSizes = _fitToViewport(imgPreloader.width,imgPreloader.height);
-				imgPreloader.width = correctSizes['width'];
-				imgPreloader.height = correctSizes['height'];
-				showimage(imgPreloader.width,imgPreloader.height,correctSizes["containerWidth"],correctSizes["containerHeight"],correctSizes["contentHeight"],correctSizes["contentWidth"],correctSizes["resized"]);
-			};
-		
-			imgPreloader.src = $caller.attr('href');
-		};
-	
-		function _getScroll(){
-			scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
-			scrollLeft = window.pageXOffset || document.documentElement.scrollLeft || 0;
-			return {scrollTop:scrollTop,scrollLeft:scrollLeft};
-		};
-	
-		function _resizeOverlay() {
-			$('div.pp_overlay').css({
-				'height':$(document).height(),
-				'width':$(window).width()
-			});
-		};
-	
-		function _buildOverlay(){
-			toInject = "";
-			
-			// Build the background overlay div
-			toInject += "<div class='pp_overlay'></div>";
-			
-			// Basic HTML for the picture holder
-			toInject += '<div class="pp_pic_holder"><div class="pp_top"><div class="pp_left"></div><div class="pp_middle"></div><div class="pp_right"></div></div><div class="pp_content"><a href="#" class="pp_expand" title="Expand the image">Expand</a><div class="pp_loaderIcon"></div><div class="pp_hoverContainer"><a class="pp_next" href="#">next</a><a class="pp_previous" href="#">previous</a></div><div id="pp_full_res"><img id="fullResImage" src="" /></div><div class="pp_details clearfix"><a class="pp_close" href="#">Close</a><p class="pp_description"></p><div class="pp_nav"><a href="#" class="pp_arrow_previous">Previous</a><p class="currentTextHolder">0'+settings.counter_separator_label+'0</p><a href="#" class="pp_arrow_next">Next</a></div></div></div><div class="pp_bottom"><div class="pp_left"></div><div class="pp_middle"></div><div class="pp_right"></div></div></div>';
-			
-			// Basic html for the title holder
-			toInject += '<div class="ppt"><div class="ppt_left"></div><div class="ppt_content"></div><div class="ppt_right"></div></div>';
-			
-			$('body').append(toInject);
-			
-			// Set my global selectors
-			$pp_pic_holder = $('.pp_pic_holder');
-			$ppt = $('.ppt');
-			
-			$('div.pp_overlay').css('height',$(document).height()).bind('click',function(){
-				close();
-			});
-
-			$pp_pic_holder.css({'opacity': 0}).addClass(settings.theme);
-
-			$('a.pp_close').bind('click',function(){ close(); return false; });
-
-			$('a.pp_expand').bind('click',function(){				
-				$this = $(this);
-				
-				// Expand the image
-				if($this.hasClass('pp_expand')){
-					$this.removeClass('pp_expand').addClass('pp_contract');
-					doresize = false;
-				}else{
-					$this.removeClass('pp_contract').addClass('pp_expand');
-					doresize = true;
-				};
-			
-				_hideTitle();
-				
-				$pp_pic_holder.find('.pp_hoverContainer, #pp_full_res, .pp_details').fadeOut(settings.animationSpeed,function(){
-					_preload();
-				});
-		
-				return false;	
-			});
-		
-			$pp_pic_holder.find('.pp_previous, .pp_arrow_previous').bind('click',function(){
-				changePicture('previous');
-				return false;
-			});
-		
-			$pp_pic_holder.find('.pp_next, .pp_arrow_next').bind('click',function(){
-				changePicture('next');
-				return false;
-			});
-
-			$pp_pic_holder.find('.pp_hoverContainer').css({
-				'margin-left': settings.padding/2
-			});
-		
-			// If it's not a set, hide the links
-			if(!isSet) {
-				$pp_pic_holder.find('.pp_hoverContainer,.pp_nav').hide();
-			};
-
-
-			// To fix the bug with IE select boxes
-			if($.browser.msie && $.browser.version == 6){
-				$('body').addClass('ie6');
-				$('select').css('visibility','hidden');
-			};
-
-			// Then fade it in
-			$('div.pp_overlay').css('opacity',0).fadeTo(settings.animationSpeed,settings.opacity, function(){
-				$pp_pic_holder.css('opacity',0).fadeIn(settings.animationSpeed,function(){
-					$pp_pic_holder.attr('style','left:'+$pp_pic_holder.css('left')+';top:'+$pp_pic_holder.css('top')+';');
-					_preload();
-				});
-			});
-		};
-	};
-})(jQuery);
+(function($){$.prettyPhoto={version:'2.5.6'};$.fn.prettyPhoto=function(settings){settings=jQuery.extend({animationSpeed:'normal',opacity:0.80,showTitle:true,allowresize:true,default_width:500,default_height:344,counter_separator_label:'/',theme:'light_rounded',hideflash:false,wmode:'opaque',autoplay:true,modal:false,changepicturecallback:function(){},callback:function(){},markup:'<div class="pp_pic_holder"> \
+      <div class="pp_top"> \
+       <div class="pp_left"></div> \
+       <div class="pp_middle"></div> \
+       <div class="pp_right"></div> \
+      </div> \
+      <div class="pp_content_container"> \
+       <div class="pp_left"> \
+       <div class="pp_right"> \
+        <div class="pp_content"> \
+         <div class="pp_loaderIcon"></div> \
+         <div class="pp_fade"> \
+          <a href="#" class="pp_expand" title="Expand the image">Expand</a> \
+          <div class="pp_hoverContainer"> \
+           <a class="pp_next" href="#">next</a> \
+           <a class="pp_previous" href="#">previous</a> \
+          </div> \
+          <div id="pp_full_res"></div> \
+          <div class="pp_details clearfix"> \
+           <a class="pp_close" href="#">Close</a> \
+           <p class="pp_description"></p> \
+           <div class="pp_nav"> \
+            <a href="#" class="pp_arrow_previous">Previous</a> \
+            <p class="currentTextHolder">0/0</p> \
+            <a href="#" class="pp_arrow_next">Next</a> \
+           </div> \
+          </div> \
+         </div> \
+        </div> \
+       </div> \
+       </div> \
+      </div> \
+      <div class="pp_bottom"> \
+       <div class="pp_left"></div> \
+       <div class="pp_middle"></div> \
+       <div class="pp_right"></div> \
+      </div> \
+     </div> \
+     <div class="pp_overlay"></div> \
+     <div class="ppt"></div>',image_markup:'<img id="fullResImage" src="" />',flash_markup:'<object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" width="{width}" height="{height}"><param name="wmode" value="{wmode}" /><param name="allowfullscreen" value="true" /><param name="allowscriptaccess" value="always" /><param name="movie" value="{path}" /><embed src="{path}" type="application/x-shockwave-flash" allowfullscreen="true" allowscriptaccess="always" width="{width}" height="{height}" wmode="{wmode}"></embed></object>',quicktime_markup:'<object classid="clsid:02BF25D5-8C17-4B23-BC80-D3488ABDDC6B" codebase="http://www.apple.com/qtactivex/qtplugin.cab" height="{height}" width="{width}"><param name="src" value="{path}"><param name="autoplay" value="{autoplay}"><param name="type" value="video/quicktime"><embed src="{path}" height="{height}" width="{width}" autoplay="{autoplay}" type="video/quicktime" pluginspage="http://www.apple.com/quicktime/download/"></embed></object>',iframe_markup:'<iframe src ="{path}" width="{width}" height="{height}" frameborder="no"></iframe>',inline_markup:'<div class="pp_inline clearfix">{content}</div>'},settings);if($.browser.msie&&parseInt($.browser.version)==6){settings.theme="light_square";}
+if($('.pp_overlay').size()==0)_buildOverlay();var doresize=true,percentBased=false,correctSizes,$pp_pic_holder,$ppt,$pp_overlay,pp_contentHeight,pp_contentWidth,pp_containerHeight,pp_containerWidth,windowHeight=$(window).height(),windowWidth=$(window).width(),setPosition=0,scrollPos=_getScroll();$(window).scroll(function(){scrollPos=_getScroll();_centerOverlay();_resizeOverlay();});$(window).resize(function(){_centerOverlay();_resizeOverlay();});$(document).keydown(function(e){if($pp_pic_holder.is(':visible'))
+switch(e.keyCode){case 37:$.prettyPhoto.changePage('previous');break;case 39:$.prettyPhoto.changePage('next');break;case 27:if(!settings.modal)
+$.prettyPhoto.close();break;};});$(this).each(function(){$(this).bind('click',function(){_self=this;theRel=$(this).attr('rel');galleryRegExp=/\[(?:.*)\]/;theGallery=galleryRegExp.exec(theRel);var images=new Array(),titles=new Array(),descriptions=new Array();if(theGallery){$('a[rel*='+theGallery+']').each(function(i){if($(this)[0]===$(_self)[0])setPosition=i;images.push($(this).attr('href'));titles.push($(this).find('img').attr('alt'));descriptions.push($(this).attr('title'));});}else{images=$(this).attr('href');titles=($(this).find('img').attr('alt'))?$(this).find('img').attr('alt'):'';descriptions=($(this).attr('title'))?$(this).attr('title'):'';}
+$.prettyPhoto.open(images,titles,descriptions);return false;});});$.prettyPhoto.open=function(gallery_images,gallery_titles,gallery_descriptions){if($.browser.msie&&$.browser.version==6){$('select').css('visibility','hidden');};if(settings.hideflash)$('object,embed').css('visibility','hidden');images=$.makeArray(gallery_images);titles=$.makeArray(gallery_titles);descriptions=$.makeArray(gallery_descriptions);image_set=($(images).size()>0)?true:false;_checkPosition($(images).size());$('.pp_loaderIcon').show();$pp_overlay.show().fadeTo(settings.animationSpeed,settings.opacity);$pp_pic_holder.find('.currentTextHolder').text((setPosition+1)+settings.counter_separator_label+$(images).size());if(descriptions[setPosition]){$pp_pic_holder.find('.pp_description').show().html(unescape(descriptions[setPosition]));}else{$pp_pic_holder.find('.pp_description').hide().text('');};if(titles[setPosition]&&settings.showTitle){hasTitle=true;$ppt.html(unescape(titles[setPosition]));}else{hasTitle=false;};movie_width=(parseFloat(grab_param('width',images[setPosition])))?grab_param('width',images[setPosition]):settings.default_width.toString();movie_height=(parseFloat(grab_param('height',images[setPosition])))?grab_param('height',images[setPosition]):settings.default_height.toString();if(movie_width.indexOf('%')!=-1||movie_height.indexOf('%')!=-1){movie_height=parseFloat(($(window).height()*parseFloat(movie_height)/100)-100);movie_width=parseFloat(($(window).width()*parseFloat(movie_width)/100)-100);percentBased=true;}
+$pp_pic_holder.fadeIn(function(){imgPreloader="";switch(_getFileType(images[setPosition])){case'image':imgPreloader=new Image();nextImage=new Image();if(image_set&&setPosition>$(images).size())nextImage.src=images[setPosition+1];prevImage=new Image();if(image_set&&images[setPosition-1])prevImage.src=images[setPosition-1];$pp_pic_holder.find('#pp_full_res')[0].innerHTML=settings.image_markup;$pp_pic_holder.find('#fullResImage').attr('src',images[setPosition]);imgPreloader.onload=function(){correctSizes=_fitToViewport(imgPreloader.width,imgPreloader.height);_showContent();};imgPreloader.onerror=function(){alert('Image cannot be loaded. Make sure the path is correct and image exist.');$.prettyPhoto.close();};imgPreloader.src=images[setPosition];break;case'youtube':correctSizes=_fitToViewport(movie_width,movie_height);movie='http://www.youtube.com/v/'+grab_param('v',images[setPosition]);if(settings.autoplay)movie+="&autoplay=1";toInject=settings.flash_markup.replace(/{width}/g,correctSizes['width']).replace(/{height}/g,correctSizes['height']).replace(/{wmode}/g,settings.wmode).replace(/{path}/g,movie);break;case'vimeo':correctSizes=_fitToViewport(movie_width,movie_height);movie_id=images[setPosition];movie='http://vimeo.com/moogaloop.swf?clip_id='+movie_id.replace('http://vimeo.com/','');if(settings.autoplay)movie+="&autoplay=1";toInject=settings.flash_markup.replace(/{width}/g,correctSizes['width']).replace(/{height}/g,correctSizes['height']).replace(/{wmode}/g,settings.wmode).replace(/{path}/g,movie);break;case'quicktime':correctSizes=_fitToViewport(movie_width,movie_height);correctSizes['height']+=15;correctSizes['contentHeight']+=15;correctSizes['containerHeight']+=15;toInject=settings.quicktime_markup.replace(/{width}/g,correctSizes['width']).replace(/{height}/g,correctSizes['height']).replace(/{wmode}/g,settings.wmode).replace(/{path}/g,images[setPosition]).replace(/{autoplay}/g,settings.autoplay);break;case'flash':correctSizes=_fitToViewport(movie_width,movie_height);flash_vars=images[setPosition];flash_vars=flash_vars.substring(images[setPosition].indexOf('flashvars')+10,images[setPosition].length);filename=images[setPosition];filename=filename.substring(0,filename.indexOf('?'));toInject=settings.flash_markup.replace(/{width}/g,correctSizes['width']).replace(/{height}/g,correctSizes['height']).replace(/{wmode}/g,settings.wmode).replace(/{path}/g,filename+'?'+flash_vars);break;case'iframe':correctSizes=_fitToViewport(movie_width,movie_height);frame_url=images[setPosition];frame_url=frame_url.substr(0,frame_url.indexOf('iframe')-1);toInject=settings.iframe_markup.replace(/{width}/g,correctSizes['width']).replace(/{height}/g,correctSizes['height']).replace(/{path}/g,frame_url);break;case'inline':myClone=$(images[setPosition]).clone().css({'width':settings.default_width}).wrapInner('<div id="pp_full_res"><div class="pp_inline clearfix"></div></div>').appendTo($('body'));correctSizes=_fitToViewport($(myClone).width(),$(myClone).height());$(myClone).remove();toInject=settings.inline_markup.replace(/{content}/g,$(images[setPosition]).html());break;};if(!imgPreloader){$pp_pic_holder.find('#pp_full_res')[0].innerHTML=toInject;_showContent();};});};$.prettyPhoto.changePage=function(direction){if(direction=='previous'){setPosition--;if(setPosition<0){setPosition=0;return;};}else{if($('.pp_arrow_next').is('.disabled'))return;setPosition++;};if(!doresize)doresize=true;_hideContent(function(){$.prettyPhoto.open(images,titles,descriptions)});$('a.pp_expand,a.pp_contract').fadeOut(settings.animationSpeed);};$.prettyPhoto.close=function(){$pp_pic_holder.find('object,embed').css('visibility','hidden');$('div.pp_pic_holder,div.ppt,.pp_fade').fadeOut(settings.animationSpeed);$pp_overlay.fadeOut(settings.animationSpeed,function(){$('#pp_full_res').html('');$pp_pic_holder.attr('style','').find('div:not(.pp_hoverContainer)').attr('style','');_centerOverlay();if($.browser.msie&&$.browser.version==6){$('select').css('visibility','visible');};if(settings.hideflash)$('object,embed').css('visibility','visible');setPosition=0;settings.callback();});doresize=true;};_showContent=function(){$('.pp_loaderIcon').hide();projectedTop=scrollPos['scrollTop']+((windowHeight/2)-(correctSizes['containerHeight']/2));if(projectedTop<0)projectedTop=0+$ppt.height();$pp_pic_holder.find('.pp_content').animate({'height':correctSizes['contentHeight']},settings.animationSpeed);$pp_pic_holder.animate({'top':projectedTop,'left':(windowWidth/2)-(correctSizes['containerWidth']/2),'width':correctSizes['containerWidth']},settings.animationSpeed,function(){$pp_pic_holder.find('.pp_hoverContainer,#fullResImage').height(correctSizes['height']).width(correctSizes['width']);$pp_pic_holder.find('.pp_fade').fadeIn(settings.animationSpeed);if(image_set&&_getFileType(images[setPosition])=="image"){$pp_pic_holder.find('.pp_hoverContainer').show();}else{$pp_pic_holder.find('.pp_hoverContainer').hide();}
+if(settings.showTitle&&hasTitle){$ppt.css({'top':$pp_pic_holder.offset().top-25,'left':$pp_pic_holder.offset().left+20,'display':'none'});$ppt.fadeIn(settings.animationSpeed);};if(correctSizes['resized'])$('a.pp_expand,a.pp_contract').fadeIn(settings.animationSpeed);settings.changepicturecallback();});};function _hideContent(callback){$pp_pic_holder.find('#pp_full_res object,#pp_full_res embed').css('visibility','hidden');$pp_pic_holder.find('.pp_fade').fadeOut(settings.animationSpeed,function(){$('.pp_loaderIcon').show();if(callback)callback();});$ppt.fadeOut(settings.animationSpeed);}
+function _checkPosition(setCount){if(setPosition==setCount-1){$pp_pic_holder.find('a.pp_next').css('visibility','hidden');$pp_pic_holder.find('a.pp_arrow_next').addClass('disabled').unbind('click');}else{$pp_pic_holder.find('a.pp_next').css('visibility','visible');$pp_pic_holder.find('a.pp_arrow_next.disabled').removeClass('disabled').bind('click',function(){$.prettyPhoto.changePage('next');return false;});};if(setPosition==0){$pp_pic_holder.find('a.pp_previous').css('visibility','hidden');$pp_pic_holder.find('a.pp_arrow_previous').addClass('disabled').unbind('click');}else{$pp_pic_holder.find('a.pp_previous').css('visibility','visible');$pp_pic_holder.find('a.pp_arrow_previous.disabled').removeClass('disabled').bind('click',function(){$.prettyPhoto.changePage('previous');return false;});};if(setCount>1){$('.pp_nav').show();}else{$('.pp_nav').hide();}};function _fitToViewport(width,height){hasBeenResized=false;_getDimensions(width,height);imageWidth=width;imageHeight=height;if(((pp_containerWidth>windowWidth)||(pp_containerHeight>windowHeight))&&doresize&&settings.allowresize&&!percentBased){hasBeenResized=true;notFitting=true;while(notFitting){if((pp_containerWidth>windowWidth)){imageWidth=(windowWidth-200);imageHeight=(height/width)*imageWidth;}else if((pp_containerHeight>windowHeight)){imageHeight=(windowHeight-200);imageWidth=(width/height)*imageHeight;}else{notFitting=false;};pp_containerHeight=imageHeight;pp_containerWidth=imageWidth;};_getDimensions(imageWidth,imageHeight);};return{width:Math.floor(imageWidth),height:Math.floor(imageHeight),containerHeight:Math.floor(pp_containerHeight),containerWidth:Math.floor(pp_containerWidth)+40,contentHeight:Math.floor(pp_contentHeight),contentWidth:Math.floor(pp_contentWidth),resized:hasBeenResized};};function _getDimensions(width,height){width=parseFloat(width);height=parseFloat(height);$pp_details=$pp_pic_holder.find('.pp_details');$pp_details.width(width);detailsHeight=parseFloat($pp_details.css('marginTop'))+parseFloat($pp_details.css('marginBottom'));$pp_details=$pp_details.clone().appendTo($('body')).css({'position':'absolute','top':-10000});detailsHeight+=$pp_details.height();detailsHeight=(detailsHeight<=34)?36:detailsHeight;if($.browser.msie&&$.browser.version==7)detailsHeight+=8;$pp_details.remove();pp_contentHeight=height+detailsHeight;pp_contentWidth=width;pp_containerHeight=pp_contentHeight+$ppt.height()+$pp_pic_holder.find('.pp_top').height()+$pp_pic_holder.find('.pp_bottom').height();pp_containerWidth=width;}
+function _getFileType(itemSrc){if(itemSrc.match(/youtube\.com\/watch/i)){return'youtube';}else if(itemSrc.match(/vimeo\.com/i)){return'vimeo';}else if(itemSrc.indexOf('.mov')!=-1){return'quicktime';}else if(itemSrc.indexOf('.swf')!=-1){return'flash';}else if(itemSrc.indexOf('iframe')!=-1){return'iframe'}else if(itemSrc.substr(0,1)=='#'){return'inline';}else{return'image';};};function _centerOverlay(){if(doresize){titleHeight=$ppt.height();contentHeight=$pp_pic_holder.height();contentwidth=$pp_pic_holder.width();projectedTop=(windowHeight/2)+scrollPos['scrollTop']-((contentHeight+titleHeight)/2);$pp_pic_holder.css({'top':projectedTop,'left':(windowWidth/2)+scrollPos['scrollLeft']-(contentwidth/2)});$ppt.css({'top':projectedTop-titleHeight,'left':(windowWidth/2)+scrollPos['scrollLeft']-(contentwidth/2)+20});};};function _getScroll(){if(self.pageYOffset){return{scrollTop:self.pageYOffset,scrollLeft:self.pageXOffset};}else if(document.documentElement&&document.documentElement.scrollTop){return{scrollTop:document.documentElement.scrollTop,scrollLeft:document.documentElement.scrollLeft};}else if(document.body){return{scrollTop:document.body.scrollTop,scrollLeft:document.body.scrollLeft};};};function _resizeOverlay(){windowHeight=$(window).height();windowWidth=$(window).width();$pp_overlay.css({'height':$(document).height()});};function _buildOverlay(){$('body').append(settings.markup);$pp_pic_holder=$('.pp_pic_holder');$ppt=$('.ppt');$pp_overlay=$('div.pp_overlay');$pp_pic_holder.attr('class','pp_pic_holder '+settings.theme);$pp_overlay.css({'opacity':0,'height':$(document).height()}).bind('click',function(){if(!settings.modal)
+$.prettyPhoto.close();});$('a.pp_close').bind('click',function(){$.prettyPhoto.close();return false;});$('a.pp_expand').bind('click',function(){$this=$(this);if($this.hasClass('pp_expand')){$this.removeClass('pp_expand').addClass('pp_contract');doresize=false;}else{$this.removeClass('pp_contract').addClass('pp_expand');doresize=true;};_hideContent(function(){$.prettyPhoto.open(images,titles,descriptions)});$pp_pic_holder.find('.pp_fade').fadeOut(settings.animationSpeed);return false;});$pp_pic_holder.find('.pp_previous, .pp_arrow_previous').bind('click',function(){$.prettyPhoto.changePage('previous');return false;});$pp_pic_holder.find('.pp_next, .pp_arrow_next').bind('click',function(){$.prettyPhoto.changePage('next');return false;});};_centerOverlay();};function grab_param(name,url){name=name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");var regexS="[\\?&]"+name+"=([^&#]*)";var regex=new RegExp(regexS);var results=regex.exec(url);if(results==null)
+return"";else
+return results[1];}})(jQuery);
