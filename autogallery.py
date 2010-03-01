@@ -84,7 +84,7 @@ except OSError, e:
 	else:
 		raise
 
-size = 200, 200
+size = int(config.get('autogallery', 'max-x')), int(config.get('autogallery', 'max-y'))
 
 for image in images:
 	if os.path.isfile(pwd + '/thumbs/' + 's_' + image) == 0 or regen == 1:
