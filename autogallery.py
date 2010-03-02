@@ -98,12 +98,13 @@ for image in images:
 dirnamelist = pwd.split('/')
 dirname = dirnamelist[-1]
 
-imagelinks = ''
-nofxlinks = ''
+fx_links_list = []
+nofx_links_list = []
 
 for image in images:
-    imagelinks += config.get('autogallery', 'imagefxlink', vars={'image': image, 'dirname': dirname}) + "\n\t\t"
-#    imagelinks += '<a href="' + image + '" rel="prettyPhoto['+ dirname +']" title="'+ image +'"><img src="thumbs/s_'+ image +'" /></a>'
+    fx_links_list.append(''.join((config.get('autogallery', 'imagefxlink', vars={'image': image, 'dirname': dirname}), '\n\t\t')))
+
+imagelinks = ''.join(fx_links_list)
 
 title = config.get('autogallery', 'title', vars={'dirname': dirname})
 fxtags = config.get('autogallery', 'fxtags')
@@ -122,7 +123,8 @@ buildnofx = config.get('autogallery', 'buildnofx')
 
 if buildnofx == "1":
     for image in images:
-        nofxlinks += config.get('autogallery', 'imagenofxlink', vars={'image': image, 'dirname': dirname}) + "\n\t\t"
+        nofx_links_list.append(''.join((config.get('autogallery', 'imagenofxlink', vars={'image': image, 'dirname': dirname}), "\n\t\t")))
+    nofxlinks = ''.join(nofx_links_list)
 
     nofx = open('nofx.html', 'w') #open effectless index file
 
