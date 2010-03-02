@@ -11,6 +11,8 @@ Python Imaging Library
 
 Caveat: Python 2.5 or greater should work, but only Python 2.6 is tested.
 
+Python 2.4 will work if you don't have to extract supportfiles.tar.bz2. We are using the tarfile.extractall() function, which was added in Py 2.5. If supportfiles/ already exists, this function won't be called, and Python 2.4 will work.
+
 USAGE:
 -----------------------
 
