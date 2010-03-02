@@ -1,7 +1,15 @@
 WHAT IT IS:
 -----------------------
 
-autogallery is a simple Python experiment to easily create accessible galleries out of folders full of files. 
+autogallery is a simple Python experiment to easily create accessible galleries out of folders full of files.
+
+REQUIREMENTS:
+-----------------------
+
+Python >= 2.5
+Python Imaging Library
+
+Python 2.5 or greater should work, but only Python 2.6 is tested.
 
 USAGE:
 -----------------------
