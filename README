@@ -27,7 +27,7 @@ Steps:
 
 1. Copy autogallery.py and supportfiles/ to a directory with images in it
 2. Run autogallery.py
-3. Hit the directory you extracted into /index.html and enjoy your pictures. :)
+3. Hit directory-you-copied-into/index.html and enjoy your pictures. :)
 
 Simply copy the script and the tarball of its support files to a folder full of images, and execute python autogallery.py from that directory. A webpage will automatically be generated and ready to send out to friends. : )
 
